@@ -8,9 +8,17 @@
 import UIKit
 
 extension UIView {
+    private struct AssociatedKeys {
+        static var viewFactoryTags: Void?
+    }
+
     @IBInspectable private var factoryTags: String {
-        set { accessibilityIdentifier = newValue }
-        get { return accessibilityIdentifier ?? "" }
+        get {
+            return objc_getAssociatedObject(self, &AssociatedKeys.viewFactoryTags) as? String ?? ""
+        }
+        set {
+            objc_setAssociatedObject(self, &AssociatedKeys.viewFactoryTags, newValue, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
     }
 
     fileprivate var factoryTagSet: Set<String> {
