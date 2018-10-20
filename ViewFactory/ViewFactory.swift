@@ -21,32 +21,32 @@ extension UIView {
         }
     }
 
-    fileprivate var factoryTagSet: Set<String> {
+    fileprivate var nibTags: Set<String> {
         set { factoryTags = newValue.joined(separator: " ") }
         get { return Set(factoryTags.split(separator: " ").map({ String($0) })) }
     }
 
     convenience init<T: ViewFactoryTagType>(frame: CGRect = .zero, factory: ViewFactory<T>, tagged tags: Set<T> = []) {
         self.init(frame: frame)
-        factory.applyTags(tags, to: self)
+        factory.apply(tags: tags, to: self)
     }
 
     open override func awakeFromNib() {
         super.awakeFromNib()
         if let nibViewFactory = (UIApplication.shared.delegate as? ViewFactoryDelegate)?.nibViewFactory,
             nibViewFactory.applyToUntaggedNibViews {
-            nibViewFactory.apply(to: self)
+            nibViewFactory.applyNibTags(to: self)
         }
     }
 }
 
-protocol ViewFactoryType {
+protocol NibViewFactoryType {
     var applyToUntaggedNibViews: Bool { get set }
-    func apply(to: UIView)
+    func applyNibTags(to: UIView)
 }
 
 protocol ViewFactoryDelegate {
-    var nibViewFactory: ViewFactoryType { get }
+    var nibViewFactory: NibViewFactoryType { get }
 }
 
 protocol ViewFactoryTagType: Hashable, CustomStringConvertible {}
@@ -65,7 +65,7 @@ private extension Set where Element: ViewFactoryTagType {
     }
 }
 
-class ViewFactory<TagType: ViewFactoryTagType>: ViewFactoryType {
+class ViewFactory<TagType: ViewFactoryTagType>: NibViewFactoryType {
     private struct ConfigBlock {
         let index: Int
         let applyTo: (UIView) -> ()
@@ -93,8 +93,20 @@ class ViewFactory<TagType: ViewFactoryTagType>: ViewFactoryType {
         return type?.superclass()?.description()
     }
 
-    func apply(to view: UIView) {
-        let tags = view.factoryTagSet.union([typeLevelTag])
+    func apply(tags: TagType, to view: UIView) {
+        apply(tags: [tags], to: view)
+    }
+
+    func apply(tags: Set<TagType> = [], to view: UIView) {
+        apply(stringTags: tags.rawValues(), to: view)
+    }
+
+    func applyNibTags(to view: UIView) {
+        apply(stringTags: view.nibTags, to: view)
+    }
+
+    private func apply(stringTags: Set<String>, to view: UIView) {
+        let tags = stringTags.union([typeLevelTag])
         var currentTypeString = "\(type(of: view))"
         var blocks: [ConfigBlock] = []
 
@@ -107,35 +119,18 @@ class ViewFactory<TagType: ViewFactoryTagType>: ViewFactoryType {
         blocks.forEach { $0.applyTo(view) }
     }
 
-    func tagView(_ view: UIView, with tag: TagType) {
-        tagView(view, with: [tag])
-    }
-
-    func tagView(_ view: UIView, with tags: Set<TagType>) {
-        view.factoryTagSet.formUnion(tags.rawValues())
-    }
-
-    func applyTags(_ tag: TagType, to view: UIView) {
-        return applyTags([tag], to: view)
-    }
-
-    func applyTags(_ tags: Set<TagType>, to view: UIView) {
-        tagView(view, with: tags)
-        apply(to: view)
-    }
-
     func configure<T: UIView>(_ viewType: T.Type, tagged tag: TagType, with configuration: @escaping (T) -> ()) {
         configure(viewType, tagged: [tag], with: configuration)
     }
 
     func configure<T: UIView>(_ viewType: T.Type, tagged tags: Set<TagType> = [], with applyTo: @escaping (T) -> ()) {
         let viewTypeString = "\(viewType)"
-        let factoryTags = tags.isEmpty ? [typeLevelTag] : tags.rawValues()
+        let stringTags = tags.isEmpty ? [typeLevelTag] : tags.rawValues()
 
         //sort type-level blocks before any tagged blocks (lower specificity)
         let index = tags.isEmpty ? -1 : configBlockIndex
 
-        for tag in factoryTags {
+        for tag in stringTags {
             if configBlocks[viewTypeString] == nil { configBlocks[viewTypeString] = [:] }
             if configBlocks[viewTypeString]?[tag] == nil { configBlocks[viewTypeString]?[tag] = [] }
 

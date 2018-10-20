@@ -10,7 +10,7 @@ import UIKit
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, ViewFactoryDelegate {
     var window: UIWindow?
-    let nibViewFactory: ViewFactoryType = LightTheme.shared
+    let nibViewFactory: NibViewFactoryType = LightTheme.shared
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.

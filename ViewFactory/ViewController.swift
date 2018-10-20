@@ -25,7 +25,7 @@ class ViewController: UIViewController {
         let darkButton = UIButton(type: .custom)
         darkButton.frame = CGRect(x: 150, y: 200, width: 100, height: 100)
         darkButton.setTitle("Button", for: .normal)
-        DarkTheme.shared.applyTags(.rounded, to: darkButton)
+        DarkTheme.shared.apply(tags: .rounded, to: darkButton)
 
         view.addSubview(darkView)
         view.addSubview(lightView)
