@@ -33,8 +33,17 @@ extension UIView {
 
     open override func awakeFromNib() {
         super.awakeFromNib()
-        if let nibViewFactory = (UIApplication.shared.delegate as? ViewFactoryDelegate)?.nibViewFactory,
-            nibViewFactory.applyToUntaggedNibViews {
+        applyNibViewFactory()
+    }
+
+    private var viewFactoryDelegate: ViewFactoryDelegate? {
+        return UIApplication.shared.delegate as? ViewFactoryDelegate
+    }
+
+    private func applyNibViewFactory() {
+        guard let nibViewFactory = viewFactoryDelegate?.nibViewFactory(for: self) else { return }
+
+        if nibViewFactory.applyToUntaggedNibViews || !nibTags.isEmpty {
             nibViewFactory.applyNibTags(to: self)
         }
     }
@@ -46,7 +55,7 @@ protocol NibViewFactoryType {
 }
 
 protocol ViewFactoryDelegate {
-    var nibViewFactory: NibViewFactoryType { get }
+    func nibViewFactory(for view: UIView) -> NibViewFactoryType
 }
 
 protocol ViewFactoryTagType: Hashable, CustomStringConvertible {}
