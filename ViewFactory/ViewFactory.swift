@@ -38,20 +38,24 @@ extension UIView {
         return UIApplication.shared.delegate as? NibViewFactoryDelegate
     }
 
+    private var nibViewFactory: NibViewFactoryType? {
+        return nibViewFactoryDelegate?.nibViewFactory(for: self)
+    }
+
     private func applyNibViewFactory(tags: Set<String> = []) {
         NibViewFactories.lastApplicationView = self
 
-        guard let nibViewFactory = nibViewFactoryDelegate?.nibViewFactory(for: self) else { return }
+        guard let nibViewFactory = nibViewFactory else { return }
 
         if nibViewFactory.applyToUntaggedNibViews || !tags.isEmpty {
-            nibViewFactory.apply(stringTags: tags, to: self)
+            nibViewFactory.applyToNibView(self, tags: tags)
         }
     }
 }
 
 protocol NibViewFactoryType {
     var applyToUntaggedNibViews: Bool { get set }
-    func apply(stringTags: Set<String>, to view: UIView)
+    func applyToNibView(_ view: UIView, tags strings: Set<String>)
 }
 
 protocol NibViewFactoryDelegate {
@@ -111,21 +115,22 @@ class ViewFactory<TagType: ViewFactoryTagType>: NibViewFactoryType {
     }
 
     func apply(tags: Set<TagType> = [], to view: UIView) {
-        apply(stringTags: tags.descriptions(), to: view)
-    }
-
-    func apply(stringTags: Set<String>, to view: UIView) {
-        let tags = stringTags.union([typeLevelTag])
+        let stringTags = tags.descriptions().union([typeLevelTag])
         var currentTypeString = "\(type(of: view))"
         var blocks: [ConfigBlock] = []
 
         while currentTypeString != superclassTypeString(type: UIView.self) {
-            blocks = configBlocks(viewTypeString: currentTypeString, tags: tags) + blocks
+            blocks = configBlocks(viewTypeString: currentTypeString, tags: stringTags) + blocks
             guard let superTypeString = superclassTypeString(typeString: currentTypeString) else { break }
             currentTypeString = superTypeString
         }
 
         blocks.forEach { $0.applyTo(view) }
+    }
+
+    func applyToNibView(_ view: UIView, tags strings: Set<String>) {
+        let tags = Set(strings.compactMap { TagType($0) })
+        apply(tags: tags, to: view)
     }
 
     func configure<T: UIView>(_ viewType: T.Type, tagged tag: TagType, with configuration: @escaping (T) -> ()) {
