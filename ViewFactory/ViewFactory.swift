@@ -8,22 +8,13 @@
 import UIKit
 
 extension UIView {
-    private struct AssociatedKeys {
-        static var viewFactoryTags: Void?
+    private enum NibViewFactories {
+        static var lastApplicationView: UIView?
     }
 
     @IBInspectable private var factoryTags: String {
-        get {
-            return objc_getAssociatedObject(self, &AssociatedKeys.viewFactoryTags) as? String ?? ""
-        }
-        set {
-            objc_setAssociatedObject(self, &AssociatedKeys.viewFactoryTags, newValue, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        }
-    }
-
-    fileprivate var nibTags: Set<String> {
-        set { factoryTags = newValue.joined(separator: " ") }
-        get { return Set(factoryTags.split(separator: " ").map({ String($0) })) }
+        get { return "" }
+        set { applyNibViewFactory(tags: tags(from: newValue)) }
     }
 
     convenience init<T: ViewFactoryTagType>(frame: CGRect = .zero, factory: ViewFactory<T>, tagged tags: Set<T> = []) {
@@ -33,32 +24,41 @@ extension UIView {
 
     open override func awakeFromNib() {
         super.awakeFromNib()
-        applyNibViewFactory()
+        if NibViewFactories.lastApplicationView != self {
+            applyNibViewFactory()
+        }
     }
 
-    private var viewFactoryDelegate: ViewFactoryDelegate? {
-        return UIApplication.shared.delegate as? ViewFactoryDelegate
+    private func tags(from string: String) -> Set<String> {
+        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        return Set(trimmed.split(separator: " ").map({ String($0) }))
     }
 
-    private func applyNibViewFactory() {
-        guard let nibViewFactory = viewFactoryDelegate?.nibViewFactory(for: self) else { return }
+    private var nibViewFactoryDelegate: NibViewFactoryDelegate? {
+        return UIApplication.shared.delegate as? NibViewFactoryDelegate
+    }
 
-        if nibViewFactory.applyToUntaggedNibViews || !nibTags.isEmpty {
-            nibViewFactory.applyNibTags(to: self)
+    private func applyNibViewFactory(tags: Set<String> = []) {
+        NibViewFactories.lastApplicationView = self
+
+        guard let nibViewFactory = nibViewFactoryDelegate?.nibViewFactory(for: self) else { return }
+
+        if nibViewFactory.applyToUntaggedNibViews || !tags.isEmpty {
+            nibViewFactory.apply(stringTags: tags, to: self)
         }
     }
 }
 
 protocol NibViewFactoryType {
     var applyToUntaggedNibViews: Bool { get set }
-    func applyNibTags(to: UIView)
+    func apply(stringTags: Set<String>, to view: UIView)
 }
 
-protocol ViewFactoryDelegate {
-    func nibViewFactory(for view: UIView) -> NibViewFactoryType
+protocol NibViewFactoryDelegate {
+    func nibViewFactory(for view: UIView) -> NibViewFactoryType?
 }
 
-protocol ViewFactoryTagType: Hashable, CustomStringConvertible {}
+protocol ViewFactoryTagType: Hashable, LosslessStringConvertible {}
 
 extension String: ViewFactoryTagType {}
 
@@ -66,10 +66,14 @@ extension ViewFactoryTagType where Self: RawRepresentable, Self.RawValue == Stri
     var description: String {
         return rawValue
     }
+
+    init?(_ description: String) {
+        self.init(rawValue: description)
+    }
 }
 
 private extension Set where Element: ViewFactoryTagType {
-    func rawValues() -> Set<String> {
+    func descriptions() -> Set<String> {
         return Set<String>(self.map { $0.description })
     }
 }
@@ -107,14 +111,10 @@ class ViewFactory<TagType: ViewFactoryTagType>: NibViewFactoryType {
     }
 
     func apply(tags: Set<TagType> = [], to view: UIView) {
-        apply(stringTags: tags.rawValues(), to: view)
+        apply(stringTags: tags.descriptions(), to: view)
     }
 
-    func applyNibTags(to view: UIView) {
-        apply(stringTags: view.nibTags, to: view)
-    }
-
-    private func apply(stringTags: Set<String>, to view: UIView) {
+    func apply(stringTags: Set<String>, to view: UIView) {
         let tags = stringTags.union([typeLevelTag])
         var currentTypeString = "\(type(of: view))"
         var blocks: [ConfigBlock] = []
@@ -134,7 +134,7 @@ class ViewFactory<TagType: ViewFactoryTagType>: NibViewFactoryType {
 
     func configure<T: UIView>(_ viewType: T.Type, tagged tags: Set<TagType> = [], with applyTo: @escaping (T) -> ()) {
         let viewTypeString = "\(viewType)"
-        let stringTags = tags.isEmpty ? [typeLevelTag] : tags.rawValues()
+        let stringTags = tags.isEmpty ? [typeLevelTag] : tags.descriptions()
 
         //sort type-level blocks before any tagged blocks (lower specificity)
         let index = tags.isEmpty ? -1 : configBlockIndex

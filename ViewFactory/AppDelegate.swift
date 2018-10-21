@@ -12,8 +12,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 }
 
-extension AppDelegate: ViewFactoryDelegate {
-    func nibViewFactory(for view: UIView) -> NibViewFactoryType {
+extension AppDelegate: NibViewFactoryDelegate {
+    func nibViewFactory(for view: UIView) -> NibViewFactoryType? {
         return LightTheme.shared
     }
 }
