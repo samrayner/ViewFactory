@@ -1,0 +1,62 @@
+excluded:
+  - Pods
+
+disabled_rules:
+  - line_length
+  - trailing_whitespace
+  - type_body_length
+  - file_length
+  - colon
+  - comma
+  - force_cast
+  - superfluous_disable_command
+
+opt_in_rules:
+  - closure_end_indentation
+  - closure_spacing
+  - empty_count
+  - explicit_init
+  - fatal_error_message
+  - first_where
+  - implicit_return
+  - multiline_parameters
+  - nimble_operator
+  - overridden_super_call
+  - private_outlet
+  - prohibited_super_call
+  - redundant_nil_coalescing
+  - vertical_parameter_alignment_on_call
+  - trailing_closure
+  - discouraged_direct_init
+  - unneeded_parentheses_in_closure_argument
+  - array_init
+  - multiline_arguments
+  - literal_expression_end_indentation
+  - sorted_first_last
+  - override_in_extension
+  - discouraged_object_literal
+  - strict_fileprivate
+  - convenience_type
+  - no_extension_access_modifier
+  - modifier_order
+  - anyobject_protocol
+
+# Rule configuration
+
+cyclomatic_complexity:
+  ignores_case_statements: true
+
+nesting:
+  type_level:
+    warning: 3
+
+identifier_name:
+  max_length: 60
+  excluded:
+    - id
+    - i
+    - j
+    - n
+
+type_name:
+  max_length: 60

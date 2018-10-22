@@ -22,7 +22,8 @@ extension UIView {
         factory.apply(tags: tags, to: self)
     }
 
-    open override func awakeFromNib() {
+    //swiftlint:disable override_in_extension
+    override open func awakeFromNib() {
         super.awakeFromNib()
         if NibViewFactories.lastApplicationView != self {
             applyNibViewFactory()
@@ -31,7 +32,7 @@ extension UIView {
 
     private func tags(from string: String) -> Set<String> {
         let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
-        return Set(trimmed.split(separator: " ").map({ String($0) }))
+        return Set(trimmed.split(separator: " ").map { String($0) })
     }
 
     private var nibViewFactoryDelegate: NibViewFactoryDelegate? {
@@ -58,7 +59,7 @@ protocol NibViewFactoryType {
     func applyToNibView(_ view: UIView, tags strings: Set<String>)
 }
 
-protocol NibViewFactoryDelegate {
+protocol NibViewFactoryDelegate: AnyObject {
     func nibViewFactory(for view: UIView) -> NibViewFactoryType?
 }
 
@@ -76,7 +77,7 @@ extension ViewFactoryTagType where Self: RawRepresentable, Self.RawValue == Stri
     }
 }
 
-private extension Set where Element: ViewFactoryTagType {
+extension Set where Element: ViewFactoryTagType {
     func descriptions() -> Set<String> {
         return Set<String>(self.map { $0.description })
     }
@@ -85,7 +86,7 @@ private extension Set where Element: ViewFactoryTagType {
 class ViewFactory<TagType: ViewFactoryTagType>: NibViewFactoryType {
     private struct ConfigBlock {
         let index: Int
-        let applyTo: (UIView) -> ()
+        let applyTo: (UIView) -> Void
     }
 
     var applyToUntaggedNibViews = true
@@ -133,11 +134,11 @@ class ViewFactory<TagType: ViewFactoryTagType>: NibViewFactoryType {
         apply(tags: tags, to: view)
     }
 
-    func configure<T: UIView>(_ viewType: T.Type, tagged tag: TagType, with configuration: @escaping (T) -> ()) {
+    func configure<T: UIView>(_ viewType: T.Type, tagged tag: TagType, with configuration: @escaping (T) -> Void) {
         configure(viewType, tagged: [tag], with: configuration)
     }
 
-    func configure<T: UIView>(_ viewType: T.Type, tagged tags: Set<TagType> = [], with applyTo: @escaping (T) -> ()) {
+    func configure<T: UIView>(_ viewType: T.Type, tagged tags: Set<TagType> = [], with applyTo: @escaping (T) -> Void) {
         let viewTypeString = "\(viewType)"
         let stringTags = tags.isEmpty ? [typeLevelTag] : tags.descriptions()
 
